@@ -264,7 +264,110 @@ export { InvoiceRow } from './InvoiceRow'
 // Add other sub-components as needed
 ```
 
-## Step 10: Confirm and Next Steps
+## Step 10: Validate Screen Design
+
+Before presenting to the user, validate that the screen design renders correctly without errors.
+
+### Check for Playwright MCP
+
+First, verify that you have access to the Playwright MCP tool. Look for a tool named `browser_navigate` or `mcp__playwright__browser_navigate`.
+
+If the Playwright MCP tool is not available, output this EXACT message to the user (copy it verbatim):
+
+---
+To validate the screen design, I need the Playwright MCP server installed. Please run:
+
+```
+claude mcp add playwright npx @playwright/mcp@latest
+```
+
+Then restart this Claude Code session and I'll validate the screen design automatically.
+---
+
+Do not proceed with validation if Playwright MCP is not available. Skip to Step 11 instead.
+
+### Validation Process
+
+If Playwright MCP is available:
+
+1. **Start a fresh dev server**:
+  **ALWAYS** start a new dev server.  **NEVER** look for an already running dev server to use.
+   ```bash
+   npm run dev
+   ```
+   Run it in the background so you can continue with validation.
+   **Save the task_id or shell_id** returned from the background process - you'll need it to stop this specific server later.
+   Wait 5 seconds for the dev server to be ready.
+
+2. **Get the port number**:
+   Read the dev server output file to find which port it started on. Look for a line like:
+   ```
+   ➜  Local:   http://localhost:3001/
+   ```
+   Extract the port number (e.g., 3001) from this line.
+
+3. **Navigate to screen design**:
+   - URL: `http://localhost:[PORT]/sections/[section-id]/screen-designs/[ViewName]/fullscreen`
+   - Note: Use the exact ViewName (e.g., `CompetitionListView`, not `competition-list`)
+   - Wait for the page to fully load (3-5 seconds)
+
+4. **Check for errors**:
+   - Use Playwright's console message tools to check for JavaScript errors
+   - Look for error-level console messages
+   - Check that the page doesn't show "Loading..." or "Screen design not found" indefinitely
+   - Verify the screen actually renders with data
+
+5. **Take a validation screenshot** (optional but recommended):
+   - Capture at desktop viewport (1280px width recommended)
+   - Use full page screenshot to capture scrollable content
+   - This helps verify the design looks correct
+
+6. **Stop the dev server**:
+   - Always stop the dev server after validation completes
+   - Use the task_id/shell_id saved in step 1 to kill ONLY the specific background process you started
+   - **NEVER use commands like `ps aux | grep -E "[v]ite|[n]pm.*dev"`** - these will kill ALL running dev servers, not just yours
+7. **Close the browser window**:
+   - Always close the browser window you opened for testing
+   - **NEVER** close any other browser window that might be open, only close the one you opened for your Playwright testing
+
+### Validation Results
+
+**If validation succeeds** (page loads with data, no errors):
+- Include this in your completion message: "✅ Screen design validated successfully — renders correctly without errors"
+- Mention any warnings if present, but don't block on warnings
+
+**If validation fails** (errors present or screen doesn't render):
+- Report the specific errors to the user
+- Check if the issue is:
+  - Wrong file naming (ViewName doesn't match)
+  - Missing default export in preview wrapper
+  - Data import issues
+  - Component render errors
+- Offer to fix the issues before completing
+- Don't present the screen design as "complete" until it passes validation
+- Always stop the dev server even if validation fails
+
+### Common Validation Issues
+
+- **"Screen design not found"**: The ViewName in the URL doesn't match the filename
+- **"Loading..." forever**: Preview wrapper may be missing default export
+- **Data errors**: Check that data.json structure matches the TypeScript types
+- **Import errors**: Verify all component imports use correct paths
+
+### Example Validation Sequence
+
+```
+1. Finding free port... port 3421 available
+2. Starting dev server on port 3421...
+3. Navigating to screen design at http://localhost:3421/sections/[section-id]/screen-designs/[ViewName]...
+4. Checking for errors...
+5. ✅ No errors detected
+6. Screen renders correctly with sample data
+7. Design is responsive and displays properly
+8. Stopping dev server...
+```
+
+## Step 11: Confirm and Next Steps
 
 Let the user know:
 
@@ -280,11 +383,13 @@ Let the user know:
 
 - `src/sections/[section-id]/[ViewName].tsx`
 
-**Important:** Restart your dev server to see the changes.
+[Include validation status here if validation was performed]
 
-[If shell exists]: The screen design will render inside your application shell, showing the full app experience.
+[If shell exists]: The screen design renders inside your application shell, showing the full app experience.
 
 [If design tokens exist]: I've applied your color palette ([primary], [secondary], [neutral]) and typography choices.
+
+**To preview:** Navigate to `http://localhost:3000/sections/[section-id]/screen-designs/[ViewName]` in your dev server
 
 **Next steps:**
 
@@ -299,11 +404,16 @@ If the spec indicates additional views are needed:
 ## Important Notes
 
 - ALWAYS read the `frontend-design` skill before creating screen designs
+- ALWAYS validate the screen design with Playwright MCP before presenting to the user (if available)
 - Components MUST be props-based - never import data.json in exportable components
 - The preview wrapper is the ONLY file that imports data.json
 - Use TypeScript interfaces from types.ts for all props
 - Callbacks should be optional (use `?`) and called with optional chaining (`?.`)
-- Always remind the user to restart the dev server after creating files
 - Sub-components should also be props-based for maximum portability
 - Apply design tokens when available for consistent branding
 - Screen designs render inside the shell when viewed in Design OS (if shell exists)
+- Validation catches common issues: missing exports, data mismatches, import errors
+
+## Step 12: Iteration
+
+**Critical:** The user may come back with requests to change the screen design. Treat these requests as requirements changes and be sure to update the spec and data design to catalog these change requests.
